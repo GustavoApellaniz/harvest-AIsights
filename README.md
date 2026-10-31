@@ -1,172 +1,316 @@
-# AgriQuotes Assistant
+# Harvest-AIsights
 
-Assistente de perguntas e respostas sobre **cotações de commodities agrícolas** (mercado físico na França e
-futuros Euronext, CBOT e Argus). Usa **RAG (Retrieval-Augmented Generation)**: busca as linhas mais
-relevantes da tabela de cotações e pede a um LLM (Google Gemini) que responda **somente** com elas, devolvendo
-junto as linhas usadas (arquivo e número da linha).
+**A Retrieval-Augmented Generation (RAG) API for querying agricultural commodity prices.**
 
-> Projeto de portfólio em estágio inicial. Leia a seção [Limitações](#limitações-conhecidas).
-> **Não é recomendação de investimento.** Os dados são de um único dia e podem estar defasados.
+AgriQuotes Assistant is a Python-based question-answering system designed to retrieve and explain agricultural commodity quotations from structured market data.
 
-## Os dados
+It combines **FastAPI, multilingual embeddings, ChromaDB, and Google Gemini** to retrieve relevant price records and generate answers grounded in the retrieved data.
 
-Arquivo `data/agritel_quotes.csv`, fornecido pelo autor do projeto (o nome do arquivo indica a Agritel como origem).
-É um **retrato de uma única data de referência: 30/10/2026**, sem série histórica.
+Instead of relying entirely on an LLM's internal knowledge, the system provides the model with relevant source records and returns those records alongside its response, including their original file and row references.
 
-| Tipo | Mercado | Linhas | Observação |
-|---|---|---|---|
-| `physical` | Physical | 8 | Preços de mercado físico (ex.: milho entregue em Bordéus, cevada em Rouen), em EUR/tonne |
-| `futures` | Euronext | 23 | EUR/tonne |
-| `futures` | CBOT | 79 | US cents/bushel, US cents/pound e USD/short ton |
-| `futures` | Argus | 21 | EUR/tonne e USD/tonne |
+> **Project status:** Portfolio project in active development. The real Gemini API and production embedding pipeline have not yet been fully validated end to end.
+>
+> **Disclaimer:** This project is for technical demonstration and informational purposes only. It does not provide financial or investment advice.
 
-Produtos: trigo, trigo duro, milho, cevada, soja, farelo de soja, óleo de soja, colza, óleo de colza, girassol e ervilhas.
-Colunas principais: `final_price`, `variation`, `high`, `low`, `volume`, `open_interest`, `settlement_price`,
-preços/volumes de compra e venda (`bid`/`ask`), `taxes`, `surcharges` e `spot_net_price`.
+---
 
-### Como a tabela é transformada
+## Key Features
 
-Cada linha do CSV vira **um texto autocontido** (1 linha = 1 trecho indexado), por exemplo:
+- **RAG-based question answering:** Retrieves relevant quotation records before generating an answer.
+- **Multilingual semantic search:** Uses Sentence Transformers to generate embeddings for questions and data records.
+- **Vector database:** Stores and retrieves embeddings using ChromaDB.
+- **Source traceability:** Returns the retrieved records, including source file, row number, and relevant text.
+- **Conversational sessions:** Maintains a short-term conversation history for each session.
+- **Structured data ingestion:** Converts CSV rows into self-contained text records for indexing.
+- **Multiple file formats:** Includes generic loaders for CSV, PDF, TXT, and Markdown.
+- **Prompt injection mitigation:** Treats retrieved content as untrusted data when constructing prompts.
+- **Retrieval evaluation:** Includes Hit@K and Mean Reciprocal Rank (MRR) metrics.
+- **Automated testing:** Uses pytest with mocked embedding and LLM components.
+
+## Technology Stack
+
+| Technology | Purpose |
+|---|---|
+| Python 3.12 | Main development language |
+| FastAPI | REST API framework |
+| Google Gemini API | LLM response generation |
+| Sentence Transformers | Text embeddings |
+| multilingual-e5-small | Default embedding model |
+| ChromaDB | Vector storage and similarity search |
+| Pydantic | Request and response validation |
+| Pytest | Automated testing |
+
+## How It Works
+
+The application follows a Retrieval-Augmented Generation pipeline.
+
+```mermaid
+flowchart TD
+    A[User Question] --> B[FastAPI Endpoint]
+    B --> C[Generate Query Embedding]
+    C --> D[ChromaDB Similarity Search]
+    D --> E[Retrieve Relevant Records]
+    E --> F[Load Session History]
+    F --> G[Build Grounded Prompt]
+    G --> H[Google Gemini API]
+    H --> I[Generated Answer]
+    E --> J[Source References]
+    I --> K[API Response]
+    J --> K
+```
+
+### 1. Data ingestion
+
+The ingestion process reads files from the configured data directory and converts their contents into searchable text records.
+
+For the agricultural quotations dataset, each CSV row becomes an independent, self-contained document containing information such as:
+
+- Commodity and product name
+- Market and delivery location
+- Reference date
+- Contract information
+- Price and currency unit
+- Market variations and other available fields
+
+Each record is then embedded and stored in ChromaDB.
+
+### 2. Semantic retrieval
+
+When a user submits a question:
+
+1. The question is converted into an embedding.
+2. ChromaDB searches for the most semantically similar records.
+3. The application retrieves the top matching records according to the `TOP_K` configuration.
+4. The retrieved records are passed to the language model as contextual evidence.
+
+### 3. Grounded answer generation
+
+Google Gemini receives the user's question, conversation context, and retrieved records.
+
+The prompt instructs the model to answer using the provided evidence rather than introducing unsupported information.
+
+The API returns both the generated answer and the retrieved source records.
+
+---
+
+## Dataset
+
+The repository includes a sample dataset:
+
+`data/agritel_quotes.csv`
+
+The dataset represents a **single reference date: October 30, 2026**. It does not contain historical time-series data.
+
+| Market | Records | Price units |
+|---|---:|---|
+| Physical | 8 | EUR/tonne |
+| Euronext | 23 | EUR/tonne |
+| CBOT | 79 | Multiple units |
+| Argus | 21 | EUR/tonne and USD/tonne |
+| **Total** | **131** | — |
+
+Commodities covered include:
+
+- Wheat and durum wheat
+- Corn
+- Barley
+- Soybeans
+- Soybean meal and oil
+- Rapeseed and rapeseed oil
+- Sunflower
+- Peas
+
+### Data processing decisions
+
+Some transformations require explicit assumptions:
+
+- Contract labels such as `26 de dezembro` are interpreted as December 2026 based on the pattern observed in the dataset. This is an inference, not a confirmed interpretation from the original data provider.
+- Dates in `DD/MM/YYYY` format are converted to `YYYY-MM-DD`.
+- The `-` symbol is treated as a missing value.
+- English commodity names are mapped to Portuguese equivalents to support Portuguese-language queries.
+- The meaning and unit of the `variation` field are not documented by the dataset, so the application does not assume whether it represents an absolute or percentage change.
+
+---
+
+## Machine Learning Approach
+
+This project integrates pre-trained machine learning models rather than training its own models.
+
+| Component | Approach |
+|---|---|
+| Embeddings | Pre-trained Sentence Transformers model |
+| Default embedding model | `intfloat/multilingual-e5-small` |
+| Retrieval | Cosine similarity through ChromaDB |
+| Answer generation | Google Gemini API |
+| Model training | Not performed |
+| Fine-tuning | Not performed |
+
+The embedding model converts questions and quotation records into numerical representations. ChromaDB uses these representations to identify semantically relevant records.
+
+Google Gemini is consumed through its API; no custom LLM is trained or hosted by this project.
+
+---
+
+## Project Structure
 
 ```text
-Cotação de mercado físico, produto Corn (milho), mercado Physical, data de referência 2026-10-30.
-Descrição: Milho entregue em Bordéus - Base em julho de 2026. Unidade: EUR/tonne. Preço final: 272.0. ...
+.
+├── app/
+│   ├── main.py
+│   ├── dependencies.py
+│   ├── ingest.py
+│   ├── core/
+│   │   ├── config.py
+│   │   └── exceptions.py
+│   ├── models/
+│   │   └── schemas.py
+│   ├── routes/
+│   │   ├── chat.py
+│   │   └── health.py
+│   └── services/
+│       ├── ingestion.py
+│       ├── tabular.py
+│       ├── embeddings.py
+│       ├── vectorstore.py
+│       ├── history.py
+│       ├── prompts.py
+│       ├── llm.py
+│       └── rag.py
+├── data/
+│   └── agritel_quotes.csv
+├── eval/
+│   ├── evaluate.py
+│   ├── make_questions.py
+│   └── questions.jsonl
+├── tests/
+├── requirements.txt
+├── requirements-dev.txt
+├── .env.example
+└── README.md
 ```
 
-Decisões e **interpretações** (leia com atenção):
+## Getting Started
 
-- **Contrato (inferência):** no CSV o campo `contract` aparece como `26 de dezembro`, `27 de março` etc.
-  Os números crescem de 26 a 29 junto com os meses de vencimento, então o projeto os interpreta como **ano do contrato**
-  (`dezembro de 2026`, `março de 2027`), e não como dia do mês. O valor original é mantido no texto. Esta é uma
-  inferência baseada no padrão dos dados, **não** uma informação confirmada pela fonte.
-- Datas `DD/MM/AAAA` são convertidas para `AAAA-MM-DD`. O valor `-` é tratado como vazio.
-- O significado e a unidade de `variation` (absoluta ou percentual) **não estão documentados** no arquivo; o texto usa o rótulo "Variação" sem interpretar.
-- Nomes de produto em inglês ganham a tradução em português (dicionário em `app/services/tabular.py`) para ajudar buscas em português.
+### Prerequisites
 
-## O que é (e o que não é) Machine Learning aqui
+- Python 3.12
+- A Google Gemini API key
+- Internet access to download the embedding model on its first execution
+- Sufficient disk space for PyTorch and Sentence Transformers dependencies
 
-| Componente | Tipo | Observação |
-|---|---|---|
-| Geração da resposta | LLM consumido **via API** (Google Gemini, SDK `google-genai`) | Nenhum modelo próprio é treinado |
-| Embeddings das linhas e das perguntas | **Inferência** com modelo pré-treinado (`sentence-transformers`, padrão `intfloat/multilingual-e5-small`) | Sem treinamento nem fine-tuning |
-| Busca | Similaridade de cosseno em banco vetorial (ChromaDB) | Recupera as `TOP_K` linhas mais próximas |
+### 1. Clone the repository
 
-Este projeto **não treina nem faz fine-tuning** de modelos.
-
-## Funcionalidades
-
-- `POST /chat`: pergunta → resposta + linhas recuperadas (arquivo, número da linha, distância, texto).
-- Histórico por sessão, em memória (últimos N turnos).
-- Indexação por linha de comando (`python -m app.ingest`), idempotente.
-- Também indexa PDF, TXT e Markdown (carregadores genéricos; o foco e os testes de dados reais são o CSV).
-- Validação de entrada, erros em JSON e logs básicos.
-- Mitigação de prompt injection: o texto das linhas entra no prompt escapado, em um bloco declarado como dados não confiáveis.
-- Avaliação da recuperação (hit@k e MRR) com gerador de perguntas sintéticas.
-- Testes automatizados com `pytest`.
-
-## Arquitetura
-
-```
-Cliente ──POST /chat──► routes/chat.py ──► services/rag.py
-                                              │ 1. vectorstore.search(pergunta)  ──► ChromaDB (+ embeddings)
-                                              │ 2. history.get_messages(sessão)
-                                              │ 3. prompts.build_user_message(pergunta, linhas)
-                                              │ 4. llm.generate(system, mensagens) ──► Gemini API
-                                              └ 5. history.add_turn(...)
+```bash
+git clone https://github.com/GustavoApellaniz/harvest-AIsights.git
+cd harvest-AIsights
 ```
 
-```
-app/
-├── main.py              # app FastAPI e handler de erros
-├── dependencies.py      # monta os serviços uma única vez
-├── ingest.py            # CLI de indexação
-├── core/                # config.py (variáveis de ambiente), exceptions.py
-├── models/schemas.py    # contratos de entrada/saída (Pydantic)
-├── routes/              # chat.py, health.py
-└── services/
-    ├── ingestion.py     # leitura de arquivos, chunking, indexação
-    ├── tabular.py       # CSV -> um texto por linha
-    ├── embeddings.py    # wrapper do sentence-transformers
-    ├── vectorstore.py   # ChromaDB
-    ├── history.py       # histórico em memória
-    ├── prompts.py       # system prompt e montagem da mensagem
-    ├── llm.py           # cliente Gemini + tratamento de falhas
-    └── rag.py           # orquestração
-eval/                    # evaluate.py, make_questions.py, questions.jsonl
-tests/                   # pytest
-data/agritel_quotes.csv  # conjunto de dados
-```
-
-## Requisitos
-
-- Python 3.12 (versão em que os testes automatizados foram executados; outras versões 3.10+ provavelmente funcionam, mas não foram testadas).
-- Uma chave da Gemini API: https://aistudio.google.com/apikey (verifique no site as condições de uso e de cobrança).
-- Espaço em disco para o PyTorch (dependência do `sentence-transformers`). Em geral, o modelo de embeddings é baixado do Hugging Face na primeira execução.
-
-## Instalação
+### 2. Create a virtual environment
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt
-cp .env.example .env               # depois edite e preencha GEMINI_API_KEY
 ```
 
-### Variáveis de ambiente
+Activate it:
 
-Ver `.env.example`. As principais:
-
-| Variável | Descrição | Padrão |
-|---|---|---|
-| `GEMINI_API_KEY` | Chave da API (obrigatória para `/chat`) | vazio |
-| `LLM_MODEL` | Modelo Gemini. Confira os disponíveis na [documentação](https://ai.google.dev/gemini-api/docs/models) | `gemini-2.5-flash` |
-| `LLM_MAX_TOKENS` | Limite de saída. Modelos com "thinking" contam o raciocínio interno aqui; se a resposta vier vazia ou cortada, aumente | `2048` |
-| `EMBEDDING_MODEL` | Modelo do `sentence-transformers` | `intfloat/multilingual-e5-small` |
-| `TOP_K` | Quantas linhas recuperar | `8` |
-| `MAX_HISTORY_TURNS` | Turnos guardados por sessão | `5` |
-
-Para listar os modelos disponíveis para a sua chave:
-
-```python
-from google import genai
-for m in genai.Client(api_key="SUA_CHAVE").models.list():
-    print(m.name)
-```
-
-## Execução local
+**Linux / macOS**
 
 ```bash
-python -m app.ingest               # indexa data/ (inclui o CSV)
+source .venv/bin/activate
+```
+
+**Windows**
+
+```bash
+.venv\Scripts\activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+### 4. Configure environment variables
+
+Create a `.env` file from the example:
+
+```bash
+cp .env.example .env
+```
+
+On Windows, you can also copy the file manually.
+
+Add your Gemini API key:
+
+```env
+GEMINI_API_KEY=your_api_key_here
+```
+
+The main configuration options are:
+
+| Variable | Description | Default |
+|---|---|---|
+| `GEMINI_API_KEY` | Google Gemini API key | Required |
+| `LLM_MODEL` | Gemini model | `gemini-2.5-flash` |
+| `LLM_MAX_TOKENS` | Maximum output tokens | `2048` |
+| `EMBEDDING_MODEL` | Embedding model | `intfloat/multilingual-e5-small` |
+| `CHROMA_PATH` | ChromaDB storage directory | `./chroma_db` |
+| `TOP_K` | Number of records retrieved | `8` |
+| `MAX_HISTORY_TURNS` | Conversation history length | `5` |
+| `LOG_LEVEL` | Application logging level | `INFO` |
+
+See `.env.example` for the complete configuration.
+
+### 5. Index the dataset
+
+```bash
+python -m app.ingest
+```
+
+This command processes the files in the configured data directory and stores their embeddings in ChromaDB.
+
+### 6. Start the API
+
+```bash
 uvicorn app.main:app --reload
 ```
 
-Documentação interativa (Swagger): http://127.0.0.1:8000/docs
+The API will be available at:
 
-## Endpoints
+`http://127.0.0.1:8000`
 
-| Método | Rota | Descrição |
+Interactive API documentation:
+
+`http://127.0.0.1:8000/docs`
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
 |---|---|---|
-| GET | `/health` | Status e se a chave do LLM está configurada |
-| POST | `/chat` | Faz uma pergunta |
-| DELETE | `/chat/{session_id}` | Apaga o histórico de uma sessão (204) |
+| GET | `/health` | Checks application health and LLM configuration |
+| POST | `/chat` | Submits a question and retrieves an answer |
+| DELETE | `/chat/{session_id}` | Clears a session's conversation history |
 
-Códigos de erro: `422` entrada inválida · `502` falha no provedor de LLM · `503` chave ausente ou índice vazio.
-
-### Exemplo
+### Example request
 
 ```bash
 curl -X POST http://127.0.0.1:8000/chat \
   -H "Content-Type: application/json" \
-  -d '{"question": "Qual o preço final do milho entregue em Bordéus?", "session_id": "demo"}'
+  -d '{
+    "question": "What is the final price of corn delivered in Bordeaux?",
+    "session_id": "demo"
+  }'
 ```
 
-Formato da resposta. Os campos de `sources` abaixo vêm do CSV; o texto de `answer` é **ilustrativo**
-(não foi obtido de uma chamada real ao LLM):
+### Example response structure
 
 ```json
 {
   "session_id": "demo",
-  "answer": "Texto gerado pelo LLM, citando as linhas como [1].",
+  "answer": "Generated answer based on retrieved records.",
   "sources": [
     {
       "ref": 1,
@@ -175,56 +319,117 @@ Formato da resposta. Os campos de `sources` abaixo vêm do CSV; o texto de `answ
       "row": 3,
       "chunk_id": "agritel_quotes.csv::r3::c0",
       "distance": 0.0,
-      "excerpt": "Cotação de mercado físico, produto Corn (milho), mercado Physical, data de referência 2026-10-30. Descrição: Milho entregue em Bordéus - Base em julho de 2026. Unidade: EUR/tonne. Preço final: 272.0. ..."
+      "excerpt": "Physical market quotation for Corn..."
     }
   ]
 }
 ```
 
-(O valor de `distance` acima é um placeholder; ele depende do modelo de embeddings.)
-`sources` lista as linhas **enviadas ao LLM**, não necessariamente todas as citadas na resposta.
+The response above illustrates the API structure. The answer and distance are placeholders, not results from a live Gemini request.
 
-## Testes
+The `sources` field contains the records sent to the LLM. It does not guarantee that every retrieved record is explicitly cited in the generated answer.
+
+---
+
+## Evaluation
+
+The project includes a retrieval evaluation pipeline based on:
+
+- **Hit@K:** Measures whether the expected record appears among the top K retrieved results.
+- **Mean Reciprocal Rank (MRR):** Measures how highly the expected record is ranked.
+
+Generate synthetic evaluation questions:
+
+```bash
+python -m eval.make_questions \
+  --csv data/agritel_quotes.csv \
+  --out eval/questions.jsonl \
+  --n 40
+```
+
+Run the evaluation:
+
+```bash
+python -m eval.evaluate \
+  --questions eval/questions.jsonl \
+  --k 8
+```
+
+**Important:** This evaluation measures retrieval performance, not the quality or factual accuracy of generated answers.
+
+The generated questions are based on the dataset's own fields, which may overestimate performance compared with real user questions. No published evaluation using the real embedding model is currently available.
+
+---
+
+## Testing
+
+Run the automated test suite:
 
 ```bash
 pytest
 ```
 
-Os testes usam um embedder e um LLM **falsos** (determinísticos) e um ChromaDB temporário. Cobrem chunking,
-leitura de CSV/PDF/TXT/MD, a transformação das linhas do CSV (incluindo o arquivo real em `data/`), indexação idempotente,
-busca, histórico, montagem do prompt (incluindo escape de tags maliciosas), mapeamento de erros do Gemini
-(com respostas simuladas), endpoints e a métrica de avaliação. **Não há teste automatizado que chame o modelo de
-embeddings real nem a API real do Gemini.**
+The tests use mocked embedding and LLM components, along with a temporary ChromaDB instance.
 
-## Avaliando a recuperação
+They cover:
 
-```bash
-python -m eval.make_questions --csv data/agritel_quotes.csv --out eval/questions.jsonl --n 40
-python -m eval.evaluate --questions eval/questions.jsonl --k 8
-```
+- File loading and text chunking
+- CSV row transformation
+- Idempotent indexing
+- Vector retrieval
+- Conversation history
+- Prompt construction and untrusted-content handling
+- Simulated Gemini API errors
+- API endpoints
+- Retrieval evaluation metrics
 
-Mede **só a recuperação** (a linha certa está nos top-k?), não a qualidade do texto gerado.
-As perguntas geradas são **sintéticas**, montadas com os próprios campos da linha (produto, mercado, contrato); por isso
-tendem a **superestimar** o desempenho real. Escreva também perguntas à mão (formato em `eval/evaluate.py`).
-Nenhum resultado de avaliação com o modelo de embeddings real é publicado aqui ainda.
+The test suite does **not** make live calls to the real embedding model or Google Gemini API.
 
-## Limitações conhecidas
+---
 
-- **O fluxo com o modelo de embeddings real e com a API real do Gemini ainda não foi validado de ponta a ponta.**
-- **Perguntas de agregação ou ranking** sobre a tabela inteira ("qual commodity mais subiu?", "média dos preços do trigo") **não são confiáveis**:
-  o LLM só vê as `TOP_K` linhas recuperadas, não a tabela completa.
-- Dados de **uma única data**: não há histórico, tendências nem comparação entre dias.
-- A interpretação do `contract` como ano é uma inferência (ver seção Os dados).
-- **Sem autenticação nem limite de requisições**: expor esta API publicamente permitiria que terceiros gastem a sua cota/chave.
-- Histórico **em memória**: perdido ao reiniciar; não funciona com múltiplos processos/workers.
-- A busca usa só a pergunta atual; perguntas de seguimento ("e o de março?") não são reescritas com o histórico.
-- Sem reranking e sem limiar de relevância: sempre são enviadas as `TOP_K` linhas mais próximas, mesmo que irrelevantes.
-- PDFs escaneados não são lidos (sem OCR). Trocar `EMBEDDING_MODEL` exige apagar `chroma_db/` e reindexar.
-- O escape do texto reduz, mas não elimina, o risco de prompt injection. Não há teste contra um LLM real.
-- O modelo padrão (`gemini-2.5-flash`) pode ser descontinuado; confira a [lista de modelos](https://ai.google.dev/gemini-api/docs/models).
+## Known Limitations
 
-## Melhorias futuras
+This project is a portfolio prototype, not a production-ready financial data platform.
 
-Chamadas de função (function calling) com consultas em pandas para perguntas de agregação · histórico de datas (série temporal) ·
-reescrita da pergunta com o histórico · reranking · limiar de distância calibrado com a avaliação · GitHub Actions rodando `pytest` ·
-Dockerfile · histórico em SQLite · streaming · autenticação e rate limiting · teste de prompt injection contra o LLM real.
+Current limitations include:
+
+- The complete pipeline with the real embedding model and Gemini API has not yet been validated end to end.
+- The dataset contains only one reference date, so historical trends and day-to-day comparisons are unavailable.
+- Aggregation and ranking questions, such as calculating average prices or identifying the commodity with the largest price increase, are unreliable because the LLM only receives the retrieved top-K records.
+- Contract-year interpretation is based on an inference from the dataset.
+- Conversation history is stored in memory and is lost when the application restarts.
+- Session history is not shared across multiple application workers.
+- Follow-up questions are not rewritten using previous conversation context before retrieval.
+- There is no reranking or calibrated relevance threshold.
+- Scanned PDFs are not supported through OCR.
+- There is no authentication or request rate limiting.
+- Prompt injection mitigation reduces risk but does not eliminate it, and has not been validated against a live LLM.
+
+---
+
+## Future Improvements
+
+Potential next steps include:
+
+- Structured data queries using Pandas or SQL for reliable aggregations.
+- Historical quotation datasets and time-series analysis.
+- Context-aware query rewriting for follow-up questions.
+- Retrieval reranking and relevance thresholds.
+- Evaluation using manually written questions and real embedding models.
+- End-to-end integration tests with the actual Gemini API.
+- Persistent conversation storage using SQLite.
+- Authentication and rate limiting.
+- Docker support and CI automation.
+- Streaming responses.
+
+---
+
+## Project Goals
+
+AgriQuotes Assistant was developed to explore the practical implementation of a **Retrieval-Augmented Generation architecture** for structured agricultural market data.
+
+The project demonstrates how semantic retrieval, vector databases, API development, and LLM integration can be combined to build a source-grounded question-answering system.
+
+**Author:** [Gustavo Apellaniz](https://github.com/GustavoApellaniz)
+
+**Repository:** [harvest-AIsights](https://github.com/GustavoApellaniz/harvest-AIsights)
