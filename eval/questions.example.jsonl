@@ -1,0 +1,2 @@
+{"question": "Exemplo de pergunta cuja resposta está no documento?", "expected_source": "exemplo.pdf", "expected_text": "trecho esperado (opcional)"}
+{"question": "Outra pergunta de exemplo?", "expected_source": "pasta/outro.md"}

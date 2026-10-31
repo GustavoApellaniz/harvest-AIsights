@@ -1,0 +1,40 @@
+{"question": "Qual o preço final de: Milho entregue em Bordéus - Base em julho de 2026?", "expected_source": "agritel_quotes.csv", "expected_row": 3}
+{"question": "Qual o preço final de: Milho FOB Reno - Base julho de 2026?", "expected_source": "agritel_quotes.csv", "expected_row": 4}
+{"question": "Qual o preço final de: Ervilhas forrageiras FOB Creil - Base Agosto 2026?", "expected_source": "agritel_quotes.csv", "expected_row": 9}
+{"question": "Qual o preço final do contrato de trigo para março de 2027 no mercado Euronext?", "expected_source": "agritel_quotes.csv", "expected_row": 11}
+{"question": "Qual o preço final do contrato de trigo para maio de 2028 no mercado Euronext?", "expected_source": "agritel_quotes.csv", "expected_row": 16}
+{"question": "Qual o preço final do contrato de trigo para dezembro de 2028 no mercado Euronext?", "expected_source": "agritel_quotes.csv", "expected_row": 18}
+{"question": "Qual o preço final do contrato de milho para março de 2027 no mercado Euronext?", "expected_source": "agritel_quotes.csv", "expected_row": 20}
+{"question": "Qual o preço final do contrato de milho para novembro de 2027 no mercado Euronext?", "expected_source": "agritel_quotes.csv", "expected_row": 23}
+{"question": "Qual o preço final do contrato de colza para agosto de 2027 no mercado Euronext?", "expected_source": "agritel_quotes.csv", "expected_row": 28}
+{"question": "Qual o preço final do contrato de colza para agosto de 2028 no mercado Euronext?", "expected_source": "agritel_quotes.csv", "expected_row": 32}
+{"question": "Qual o preço final do contrato de trigo para dezembro de 2026 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 33}
+{"question": "Qual o preço final do contrato de trigo para março de 2027 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 34}
+{"question": "Qual o preço final do contrato de trigo para dezembro de 2027 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 38}
+{"question": "Qual o preço final do contrato de trigo para julho de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 41}
+{"question": "Qual o preço final do contrato de milho para maio de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 49}
+{"question": "Qual o preço final do contrato de milho para setembro de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 51}
+{"question": "Qual o preço final do contrato de milho para julho de 2029 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 53}
+{"question": "Qual o preço final do contrato de milho para dezembro de 2029 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 54}
+{"question": "Qual o preço final do contrato de soja para março de 2027 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 57}
+{"question": "Qual o preço final do contrato de soja para maio de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 65}
+{"question": "Qual o preço final do contrato de soja para setembro de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 68}
+{"question": "Qual o preço final do contrato de farelo de soja para dezembro de 2027 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 80}
+{"question": "Qual o preço final do contrato de farelo de soja para março de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 82}
+{"question": "Qual o preço final do contrato de farelo de soja para maio de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 83}
+{"question": "Qual o preço final do contrato de óleo de soja para dezembro de 2026 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 92}
+{"question": "Qual o preço final do contrato de óleo de soja para maio de 2027 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 95}
+{"question": "Qual o preço final do contrato de óleo de soja para agosto de 2027 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 97}
+{"question": "Qual o preço final do contrato de óleo de soja para setembro de 2027 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 98}
+{"question": "Qual o preço final do contrato de óleo de soja para dezembro de 2027 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 100}
+{"question": "Qual o preço final do contrato de óleo de soja para março de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 102}
+{"question": "Qual o preço final do contrato de óleo de soja para julho de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 104}
+{"question": "Qual o preço final do contrato de óleo de soja para setembro de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 106}
+{"question": "Qual o preço final do contrato de óleo de soja para outubro de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 107}
+{"question": "Qual o preço final do contrato de óleo de soja para dezembro de 2028 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 108}
+{"question": "Qual o preço final do contrato de óleo de soja para julho de 2029 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 109}
+{"question": "Qual o preço final do contrato de óleo de soja para outubro de 2029 no mercado CBOT?", "expected_source": "agritel_quotes.csv", "expected_row": 110}
+{"question": "Qual o preço final do contrato de óleo de colza para outubro de 2027 no mercado Argus?", "expected_source": "agritel_quotes.csv", "expected_row": 123}
+{"question": "Qual o preço final do contrato de óleo de colza para novembro de 2027 no mercado Argus?", "expected_source": "agritel_quotes.csv", "expected_row": 124}
+{"question": "Qual o preço final do contrato de trigo para julho de 2027 no mercado Argus?", "expected_source": "agritel_quotes.csv", "expected_row": 129}
+{"question": "Qual o preço final do contrato de trigo para dezembro de 2027 no mercado Argus?", "expected_source": "agritel_quotes.csv", "expected_row": 131}

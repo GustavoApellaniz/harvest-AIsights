@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+chroma_db/
+# documentos locais não são versionados, exceto o conjunto de dados de exemplo
+data/*
+!data/.gitkeep
+!data/agritel_quotes.csv

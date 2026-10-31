@@ -1,0 +1,10 @@
+# Versões fixadas = as que foram instaladas e testadas (Python 3.12.3).
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+pydantic-settings==2.16.2
+chromadb==1.5.9
+pypdf==6.21.4
+google-genai==2.34.0
+httpx==0.28.1
+# NÃO testado no ambiente de desenvolvimento deste projeto (instala PyTorch, é grande):
+sentence-transformers>=3.0
