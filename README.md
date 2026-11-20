@@ -20,7 +20,10 @@ Instead of relying entirely on an LLM's internal knowledge, the system provides 
 - **Multilingual semantic search:** Uses Sentence Transformers to generate embeddings for questions and data records.
 - **Vector database:** Stores and retrieves embeddings using ChromaDB.
 - **Source traceability:** Returns the retrieved records, including source file, row number, and relevant text.
-- **Conversational sessions:** Maintains a short-term conversation history for each session.
+- **Conversational sessions:** Maintains a short-term conversation history for each session; follow-up questions reuse the previous question for retrieval.
+- **Relevance threshold:** Optional `MAX_DISTANCE` filter avoids answering from unrelated records.
+- **Exact aggregations:** `/quotes/summary` computes statistics directly from the CSV, never mixing units.
+- **Docker and CI:** Includes a Dockerfile and a GitHub Actions workflow.
 - **Structured data ingestion:** Converts CSV rows into self-contained text records for indexing.
 - **Multiple file formats:** Includes generic loaders for CSV, PDF, TXT, and Markdown.
 - **Prompt injection mitigation:** Treats retrieved content as untrusted data when constructing prompts.
@@ -166,13 +169,15 @@ Google Gemini is consumed through its API; no custom LLM is trained or hosted by
 │   │   └── schemas.py
 │   ├── routes/
 │   │   ├── chat.py
-│   │   └── health.py
+│   │   ├── health.py
+│   │   └── quotes.py
 │   └── services/
 │       ├── ingestion.py
 │       ├── tabular.py
 │       ├── embeddings.py
 │       ├── vectorstore.py
 │       ├── history.py
+│       ├── analytics.py
 │       ├── prompts.py
 │       ├── llm.py
 │       └── rag.py
@@ -185,6 +190,8 @@ Google Gemini is consumed through its API; no custom LLM is trained or hosted by
 ├── tests/
 ├── requirements.txt
 ├── requirements-dev.txt
+├── Dockerfile
+├── .github/workflows/ci.yml
 ├── .env.example
 └── README.md
 ```
@@ -257,6 +264,7 @@ The main configuration options are:
 | `EMBEDDING_MODEL` | Embedding model | `intfloat/multilingual-e5-small` |
 | `CHROMA_PATH` | ChromaDB storage directory | `./chroma_db` |
 | `TOP_K` | Number of records retrieved | `8` |
+| `MAX_DISTANCE` | Max cosine distance for a retrieved record; if all are filtered out, the LLM is not called | Disabled |
 | `MAX_HISTORY_TURNS` | Conversation history length | `5` |
 | `LOG_LEVEL` | Application logging level | `INFO` |
 
@@ -284,6 +292,12 @@ Interactive API documentation:
 
 `http://127.0.0.1:8000/docs`
 
+### Docker
+
+```bash
+docker build -t harvest-aisights . && docker run -p 8000:8000 -e GEMINI_API_KEY=... harvest-aisights
+```
+
 ---
 
 ## API Endpoints
@@ -293,6 +307,7 @@ Interactive API documentation:
 | GET | `/health` | Checks application health and LLM configuration |
 | POST | `/chat` | Submits a question and retrieves an answer |
 | DELETE | `/chat/{session_id}` | Clears a session's conversation history |
+| GET | `/quotes/summary` | Exact count/min/max/mean of `final_price` per product, market and unit (optional `product` and `market` filters) |
 
 ### Example request
 
@@ -395,12 +410,12 @@ Current limitations include:
 
 - The complete pipeline with the real embedding model and Gemini API has not yet been validated end to end.
 - The dataset contains only one reference date, so historical trends and day-to-day comparisons are unavailable.
-- Aggregation and ranking questions, such as calculating average prices or identifying the commodity with the largest price increase, are unreliable because the LLM only receives the retrieved top-K records.
+- Aggregation and ranking questions asked through `/chat`, such as average prices or the largest price increase, are unreliable because the LLM only receives the retrieved top-K records. Use `/quotes/summary` for exact statistics; it is not yet connected to the chat flow.
 - Contract-year interpretation is based on an inference from the dataset.
 - Conversation history is stored in memory and is lost when the application restarts.
 - Session history is not shared across multiple application workers.
-- Follow-up questions are not rewritten using previous conversation context before retrieval.
-- There is no reranking or calibrated relevance threshold.
+- Follow-up retrieval simply concatenates the previous user question with the current one (no LLM rewriting), so topic changes may retrieve noisy records.
+- There is no reranking, and the `MAX_DISTANCE` relevance threshold is optional and not calibrated.
 - Scanned PDFs are not supported through OCR.
 - There is no authentication or request rate limiting.
 - Prompt injection mitigation reduces risk but does not eliminate it, and has not been validated against a live LLM.
@@ -411,15 +426,14 @@ Current limitations include:
 
 Potential next steps include:
 
-- Structured data queries using Pandas or SQL for reliable aggregations.
+- Expose the structured aggregation as an LLM tool in the chat flow (currently only available at `/quotes/summary`).
 - Historical quotation datasets and time-series analysis.
-- Context-aware query rewriting for follow-up questions.
-- Retrieval reranking and relevance thresholds.
+- LLM-based query rewriting for follow-up questions.
+- Retrieval reranking and calibration of the relevance threshold.
 - Evaluation using manually written questions and real embedding models.
 - End-to-end integration tests with the actual Gemini API.
 - Persistent conversation storage using SQLite.
 - Authentication and rate limiting.
-- Docker support and CI automation.
 - Streaming responses.
 
 ---

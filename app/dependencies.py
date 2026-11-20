@@ -24,4 +24,4 @@ def get_rag_service() -> RagService:
     embedder = SentenceTransformerEmbedder(settings.embedding_model)
     store = VectorStore(settings.chroma_path, settings.collection_name, embedder)
     history = ConversationStore(settings.max_history_turns, settings.max_sessions)
-    return RagService(store, llm, history, settings.top_k)
+    return RagService(store, llm, history, settings.top_k, settings.max_distance)

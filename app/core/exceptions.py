@@ -21,6 +21,12 @@ class LLMNotConfiguredError(LLMError):
     status_code = 503
 
 
+class DataFileNotFoundError(AppError):
+    """Arquivo de dados estruturados não encontrado."""
+
+    status_code = 404
+
+
 class IndexEmptyError(AppError):
     """Nenhum documento indexado ainda."""
 

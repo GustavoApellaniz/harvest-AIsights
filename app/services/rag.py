@@ -11,23 +11,36 @@ from app.services.vectorstore import RetrievedChunk, VectorStore
 
 logger = logging.getLogger(__name__)
 
+NO_RELEVANT_ANSWER = "Não encontrei registros relevantes para responder a essa pergunta."
+
 
 class RagService:
-    def __init__(self, store: VectorStore, llm: LLM, history: ConversationStore, top_k: int):
+    def __init__(self, store: VectorStore, llm: LLM, history: ConversationStore, top_k: int, max_distance: float | None = None):
         self._store = store
         self._llm = llm
         self._history = history
         self._top_k = top_k
+        self._max_distance = max_distance
 
     def answer(self, question: str, session_id: str) -> tuple[str, list[RetrievedChunk]]:
         started = time.perf_counter()
-        # A busca usa apenas a pergunta atual (limitação: perguntas de seguimento
-        # como "e sobre o item anterior?" não são reescritas com o histórico).
-        chunks = self._store.search(question, self._top_k)
+        # Perguntas de seguimento ("e o de Bordéus?") dependem do contexto anterior:
+        # a busca usa a pergunta anterior + a atual (sem chamada extra ao LLM).
+        previous = self._history.last_user_question(session_id)
+        retrieval_query = f"{previous} {question}" if previous else question
+        chunks = self._store.search(retrieval_query, self._top_k)
         if not chunks:
             raise IndexEmptyError(
                 "Nenhum documento indexado. Coloque arquivos em data/ e rode: python -m app.ingest"
             )
+
+        if self._max_distance is not None:
+            chunks = [c for c in chunks if c.distance <= self._max_distance]
+            if not chunks:
+                # Havia documentos, mas nenhum relevante: responde sem chamar o LLM.
+                self._history.add_turn(session_id, question, NO_RELEVANT_ANSWER)
+                logger.info("session=%s sem trechos abaixo de max_distance=%s", session_id, self._max_distance)
+                return NO_RELEVANT_ANSWER, []
 
         messages = self._history.get_messages(session_id)
         messages.append({"role": "user", "content": build_user_message(question, chunks)})

@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     chunk_size: int = Field(default=800, ge=100)
     chunk_overlap: int = Field(default=120, ge=0)
     top_k: int = Field(default=8, ge=1, le=30)
+    # Distância de cosseno máxima aceita (menor = mais parecido). None desativa o filtro.
+    max_distance: float | None = Field(default=None, ge=0)
 
     # --- Histórico em memória ---
     max_history_turns: int = Field(default=5, ge=0)

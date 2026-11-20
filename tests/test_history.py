@@ -35,3 +35,11 @@ def test_clear_and_zero_turns():
     off = ConversationStore(max_turns=0, max_sessions=2)
     off.add_turn("a", "q", "r")
     assert off.get_messages("a") == []
+
+
+def test_last_user_question():
+    store = ConversationStore(max_turns=5, max_sessions=10)
+    assert store.last_user_question("s") is None
+    store.add_turn("s", "p1", "r1")
+    store.add_turn("s", "p2", "r2")
+    assert store.last_user_question("s") == "p2"

@@ -30,6 +30,14 @@ class ConversationStore:
                 messages.append({"role": "assistant", "content": answer})
             return messages
 
+    def last_user_question(self, session_id: str) -> str | None:
+        """Última pergunta da sessão (ou None se não houver histórico)."""
+        with self._lock:
+            turns = self._sessions.get(session_id)
+            if not turns:
+                return None
+            return turns[-1][0]
+
     def add_turn(self, session_id: str, question: str, answer: str) -> None:
         if self._max_turns == 0:
             return
